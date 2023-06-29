@@ -1118,8 +1118,8 @@ void main(void)
     McuWriteRegMask(0x30,0x00,0x07);    //[0]:HS, [1]:Connect, [2]:Suspand
     McuWriteReg(0x43,0x01);             //[1]:Reset Watch Dog
 
-    McuWriteReg(0xAF,0x91);            
-    printf("CT7702 v0.23.0619(%x)\r\n",hw_regs[0xAF]);
+    McuWriteReg(0xAF,0x72);            
+    printf("CT7702 v0.23.0627(%x)\r\n",hw_regs[0xAF]);
     
     AudioInit();
     EntityInit(); 
