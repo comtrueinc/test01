@@ -165,21 +165,22 @@ typedef struct IRQ_USB_INFO
 
 
 #define I2C_IN_DATA_LEN                 32
-#define SPI_IN_DATA_LEN                 40
+#define SPI_IN_DATA_LEN                 24
 #define USB_HID_IN_DATA_LEN             2
 #define USB_JACK_IN_DATA_LEN            6
+#define USB_CUSTOM_DATA_IN_LEN          (I2C_IN_DATA_LEN+SPI_IN_DATA_LEN+USB_HID_IN_DATA_LEN+USB_JACK_IN_DATA_LEN)
 
 #define I2C_OUT_DATA_LEN                32
-#define SPI_OUT_DATA_LEN                40
+#define SPI_OUT_DATA_LEN                24
 #define USB_HID_OUT_DATA_LEN            8
 
-#define USB_CUSTOM_DATA_ADDR            0x0640
+#define USB_CUSTOM_DATA_ADDR            0x0660
 #define I2C_IN_DATA_ADDR                (USB_CUSTOM_DATA_ADDR)
 #define SPI_IN_DATA_ADDR                (I2C_IN_DATA_ADDR+I2C_IN_DATA_LEN)
 #define USB_HID_IN_DATA_ADDR            (SPI_IN_DATA_ADDR+SPI_IN_DATA_LEN) 
 #define USB_JACK_IN_DATA_ADDR           (USB_HID_IN_DATA_ADDR+USB_HID_IN_DATA_LEN) 
 
-#define I2C_OUT_DATA_ADDR               (USB_CUSTOM_DATA_ADDR+0x50)
+#define I2C_OUT_DATA_ADDR               (USB_CUSTOM_DATA_ADDR+USB_CUSTOM_DATA_IN_LEN)
 #define SPI_OUT_DATA_ADDR               (I2C_OUT_DATA_ADDR+I2C_OUT_DATA_LEN)
 #define USB_HID_OUT_DATA_ADDR           (SPI_OUT_DATA_ADDR+SPI_OUT_DATA_LEN)
 
@@ -246,6 +247,8 @@ _CTUSB_MAIN_EXTERN_ BYTE irq_flags,hid_flags,test_data[8];
 
 //_CTUSB_MAIN_EXTERN_ BYTE xdata *spi_write_data,*spi_read_data;
 _CTUSB_MAIN_EXTERN_ BYTE mi2c_slaveaddr;
+_CTUSB_MAIN_EXTERN_ BYTE UART_TimeOut_Flag, UART_TimeOut_Count;
+_CTUSB_MAIN_EXTERN_ BYTE UART_Buffer[UART_BUFFERSIZE], UART_Buffer_Index;
 _CTUSB_MAIN_EXTERN_ BYTE xdata *bulkout_data1;
 
 //-----------------------------------------------------------------------------

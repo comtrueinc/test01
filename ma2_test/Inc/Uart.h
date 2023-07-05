@@ -1,6 +1,7 @@
 #ifndef __CTUSB_UART_H__
 #define __CTUSB_UART_H__
 
+#define     UART_RX_SUPPORT                     0
 //	------------------------------------
 //		Function Prototypes
 //	------------------------------------

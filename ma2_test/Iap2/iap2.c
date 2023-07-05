@@ -578,7 +578,11 @@ void iAp2PrintPacket(BYTE* pbuf, BYTE len)
 */
 void iAp2Init(void)
 {
-
+    BYTE i, *pbuf=&iap2;
+    for(i=0;i<sizeof(IAP2_GOLBAL_INFO);i++)
+    {
+        pbuf[i]=0;
+    }
 //	BulkInit();	
 //    iap2.state      = STATE_ACC_PREPARE; 
     iAp2Prepare();
@@ -611,10 +615,10 @@ void iAp2Reset(void)
 
 void iAp2Connect(void)
 {
-    BYTE old_bank, connect_value;
+    BYTE old_bank;  //, connect_value;
     old_bank = hw_regs[0x00];
 	McuWriteReg(0x00,BANK_MISC);
-    connect_value = McuReadReg(0x30);    //bit1:connect/disconnect bit0:highspeed/fullspeed
+    //connect_value = McuReadReg(0x30);    //bit1:connect/disconnect bit0:highspeed/fullspeed
     McuWriteRegMask(0x30,0x02,0x02);     //[0]:HS/FS, [1]:Connect, [2]:Suspand
 	hw_regs[0x00] = old_bank;
 

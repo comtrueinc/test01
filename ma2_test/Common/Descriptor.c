@@ -5,25 +5,44 @@
 #include "Audio.h"
 #undef  _CTUSB_DESCRIPTOR_C_ 
 
-#define     DESC_PRINT_ADDR         0
+#define     DESC_PRINT_ADDR         1
 #define     DESC_PRINT_STRING       0
 #define     DESC_PRINT_DATA         0
 
+#define     UAC2_IS_ACTIVE(_X_)     (_X_&TYPE_UAC2)
+#define     UAC1_IS_ACTIVE(_X_)     ((_X_&TYPE_UAC1_FS)|(_X_&TYPE_UAC1_HS))
+
 BYTE  xdata usb_desc_data[USB_DESC_DATA_ADDR_LEN]           _at_    (USB_DESC_DATA_ADDR);    // 0x0000;	
+//WORD  desc_curr_addr;	
 
 void DescriptDevice(void)
 {
     int i;
     BYTE *buff; 
     WORD len,addr;
-
+    
+//    desc_curr_addr = USB_DESC_DATA_ADDR;
     addr = desc_curr_addr; 
-#if(UAC_TYPE==TYPE_UAC2)   
+//#if (UAC_TYPE == TYPE_UAC2) 
+//    len  = CT_UAC2_DEVICE_DESC_LEN;
+//    buff = uac2_device_desc_buffer;
+//#else
+//    len  = CT_UAC1_DEVICE_DESC_LEN;
+//    buff = uac1_device_desc_buffer;
+//#endif
+#if (UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type==TYPE_UAC2)
+    {
     len  = CT_UAC2_DEVICE_DESC_LEN;
     buff = uac2_device_desc_buffer;
-#else 
+    }
+#endif
+#if (UAC1_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type<TYPE_UAC2)
+    {
     len  = CT_UAC1_DEVICE_DESC_LEN;
     buff = uac1_device_desc_buffer;
+    }
 #endif
 
     DEBUG_PRINT(DESC_PRINT_ADDR,"addr:%x",HIBYTE(addr));
@@ -45,7 +64,9 @@ void DescriptDevice(void)
 
 void DescriptDevQualify(void)
 {
-#if (UAC_TYPE==TYPE_UAC2) 
+#if (UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type==TYPE_UAC2)
+    { 
     int i;
     BYTE *buff; 
     WORD len,addr;
@@ -67,6 +88,7 @@ void DescriptDevQualify(void)
     	McuWriteMemS(addr+i,buff[i]);
     }
     desc_curr_addr += len;
+    }
 #endif  //UAC_TYPE==TYPE_UAC2
 }
  
@@ -77,13 +99,30 @@ void DescriptHidReport(void)
     WORD len,addr;
     
     addr = desc_curr_addr; 
-#if (UAC_TYPE==TYPE_UAC2)   
+/*
+#if (UAC_TYPE >= TYPE_UAC2)   
     len = CT_UAC2_HID_REPORT_DESC_LEN;
     buff = uac2_hid_report_buffer;
 #else
     len = CT_UAC1_HID_REPORT_DESC_LEN;
     buff = uac1_hid_report_buffer;
 #endif
+*/
+#if (UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type==TYPE_UAC2)
+    {
+    len = CT_UAC2_HID_REPORT_DESC_LEN;
+    buff = uac2_hid_report_buffer;
+    }
+#endif
+#if (UAC1_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type<TYPE_UAC2)
+    {
+    len = CT_UAC1_HID_REPORT_DESC_LEN;
+    buff = uac1_hid_report_buffer;
+    }
+#endif
+    
     McuWriteReg(0x00,BANK_EP0);	
     McuWriteReg(0x1A,LOBYTE(addr));	
     McuWriteRegMask(0x1B,HIBYTE(addr),0x3F);	
@@ -110,13 +149,25 @@ void DescriptStringTable(void)
     BYTE i,j,max_count;
     BYTE reg, temp, *buff, string0[4]={0x04,0x03,0x09,0x04};
     WORD str_len,addr;        
-
-#if (UAC_TYPE==TYPE_UAC2)   
+/*
+#if (UAC_TYPE >= TYPE_UAC2)   
     max_count = UAC2_STRINGS_MAX_COUNT;
 #else
     max_count = UAC1_STRINGS_MAX_COUNT;
 #endif
-
+*/
+#if (UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type==TYPE_UAC2)
+    {
+    max_count = UAC2_STRINGS_MAX_COUNT;
+    }
+#endif
+#if (UAC1_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type<TYPE_UAC2)
+    {
+    max_count = UAC1_STRINGS_MAX_COUNT;
+    }
+#endif
     McuWriteReg(0x00,BANK_EP0);	
     for(i=0;i<=max_count;i++)
     {
@@ -144,8 +195,29 @@ void DescriptStringTable(void)
         }
         else
         {
-            str_len = string_table[i-1].len;
-            buff = string_table[i-1].buffer;
+/*            
+#if(UAC_TYPE >= TYPE_UAC2)
+            str_len = string_table2[i-1].len;
+            buff = string_table2[i-1].buffer;
+#else
+            str_len = string_table1[i-1].len;
+            buff = string_table1[i-1].buffer;
+#endif
+*/
+#if(UAC2_IS_ACTIVE(UAC_TYPE))
+            if(au.uac_type==TYPE_UAC2)
+            {
+            str_len = string_table2[i-1].len;
+            buff = string_table2[i-1].buffer;
+            }
+#endif
+#if(UAC1_IS_ACTIVE(UAC_TYPE))
+            if(au.uac_type<TYPE_UAC2)
+            {
+            str_len = string_table1[i-1].len;
+            buff = string_table1[i-1].buffer;
+            }
+#endif
             temp = 0x03;
             McuWriteMemS(addr++,str_len*2+2);
             McuWriteMemS(addr++,0x03);
@@ -172,6 +244,7 @@ void DescriptConfiguration(void)
     WORD i,j,len,addr;
     
     addr = desc_curr_addr;    
+/*    
 #if (UAC_TYPE==TYPE_UAC2)   
     len = UAC2_CONFIG_DESC_LEN;
     max_count = UAC2_CONFIG_MAX_COUNT;
@@ -179,7 +252,21 @@ void DescriptConfiguration(void)
     len = UAC1_CONFIG_DESC_LEN;
     max_count = UAC1_CONFIG_MAX_COUNT;
 #endif
-
+*/
+#if (UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type==TYPE_UAC2)
+    {
+    len = UAC2_CONFIG_DESC_LEN;
+    max_count = UAC2_CONFIG_MAX_COUNT;
+    }
+#endif
+#if (UAC1_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type<TYPE_UAC2)
+    {
+    len = UAC1_CONFIG_DESC_LEN;
+    max_count = UAC1_CONFIG_MAX_COUNT;
+    }
+#endif
     DEBUG_PRINT(DESC_PRINT_ADDR,"addr:%x",HIBYTE(addr));
     DEBUG_PRINT(DESC_PRINT_ADDR,"%x(Conf),",LOBYTE(addr));
     DEBUG_PRINT(DESC_PRINT_ADDR,"len:%x",HIBYTE(len));
@@ -196,8 +283,33 @@ void DescriptConfiguration(void)
     McuWriteRegMask(0x11,0x40,0xC0);	
     for(i=0;i<max_count;i++)
     {
-        buff = config_desc_table[i].buffer;
-        len  = config_desc_table[i].len;
+/*
+#if(UAC_TYPE==TYPE_UAC_DETECT)
+        buff = (au.uac_type==TYPE_UAC2)?config_desc_table2[i].buffer:config_desc_table1[i].buffer;
+        len  = (au.uac_type==TYPE_UAC2)?config_desc_table2[i].len:config_desc_table1[i].len;
+#elif(UAC_TYPE==TYPE_UAC2)
+        buff = config_desc_table2[i].buffer;
+        len  = config_desc_table2[i].len;
+#else
+        buff = config_desc_table1[i].buffer;
+        len  = config_desc_table1[i].len;
+#endif
+*/
+#if(UAC2_IS_ACTIVE(UAC_TYPE))
+        if(au.uac_type==TYPE_UAC2)
+        {
+        buff = config_desc_table2[i].buffer;
+        len  = config_desc_table2[i].len;
+        } 
+#endif
+#if(UAC1_IS_ACTIVE(UAC_TYPE))
+        if(au.uac_type<TYPE_UAC2)
+        {
+        buff = config_desc_table1[i].buffer;
+        len  = config_desc_table1[i].len;
+        }
+#endif
+
         DEBUG_PRINT(DESC_PRINT_ADDR,"addr:%x",HIBYTE(addr));
         DEBUG_PRINT(DESC_PRINT_ADDR,"%x,",LOBYTE(addr));
         DEBUG_PRINT(DESC_PRINT_ADDR,"[%x:",i);
@@ -215,11 +327,12 @@ void DescriptConfiguration(void)
     }
     desc_curr_addr = addr;
     // for hid descriptor
-#if (UAC_TYPE==TYPE_UAC2)   
+#if(UAC2_IS_ACTIVE(UAC_TYPE))
     addr = desc_curr_addr - UAC2_HID_INTERFACE_LEN - UAC2_BULK_INTERFACE_LEN + 9 ; 
     len  = UAC2_HID_DESC_LEN;
     //McuWriteReg(0x06,UAC2_HID_IF_INDEX);	
-#else
+#endif
+#if(UAC1_IS_ACTIVE(UAC_TYPE))
     addr = desc_curr_addr - UAC1_HID_INTERFACE_LEN - UAC1_BULK_INTERFACE_LEN + 9 ; 
     len  = UAC1_HID_DESC_LEN;
     //McuWriteReg(0x06,UAC1_HID_IF_INDEX);	
@@ -234,7 +347,9 @@ void DescriptConfiguration(void)
     DEBUG_PRINT(DESC_PRINT_ADDR,"%x\r\n",LOBYTE(len));
 
     // for Other Speed 
-#if (UAC_TYPE==TYPE_UAC2)   
+#if(UAC2_IS_ACTIVE(UAC_TYPE))
+    if(au.uac_type == TYPE_UAC2)
+    {
     addr = desc_curr_addr;    
     len  = CT_UAC2_OS_CONFIG_DESC_LEN;
     buff = uac2_os_config_buffer;
@@ -253,6 +368,7 @@ void DescriptConfiguration(void)
     DEBUG_PRINT(DESC_PRINT_ADDR,"%x(OS),",LOBYTE(addr));
     DEBUG_PRINT(DESC_PRINT_ADDR,"len:%x",HIBYTE(len));
     DEBUG_PRINT(DESC_PRINT_ADDR,"%x\r\n",LOBYTE(len));
+	}
 #endif
 
     desc_curr_addr += len;

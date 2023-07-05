@@ -3,11 +3,11 @@
 #include "Uart.h"
 #include "iAp2.h"
 
-#define	IAP2_IDENT_ID00_NAME				    "Comtrue CT7602 UAC2 Device"					//48=4+(43)+1
-#define	IAP2_IDENT_ID01_MODE_IDENT			    "CT7602-2112"						            //24=4+(19)+1
+#define	IAP2_IDENT_ID00_NAME				    "Comtrue CT7702 UAC2 Device"					//48=4+(43)+1
+#define	IAP2_IDENT_ID01_MODE_IDENT			    "CT7602-2306"						            //24=4+(19)+1
 #define	IAP2_IDENT_ID02_MANUFACTURE			    "Comtrue Inc."						            //24=4+(19)+1
-#define	IAP2_IDENT_ID03_SERIAL_NUMBER		    "CTUS211221"						            //24=4+(19)+1	
-#define	IAP2_IDENT_ID04_FIRMWARE_VERSION	    "1.21.1221"						                //24=4+(19)+1	
+#define	IAP2_IDENT_ID03_SERIAL_NUMBER		    "CTUS230629"						            //24=4+(19)+1	
+#define	IAP2_IDENT_ID04_FIRMWARE_VERSION	    "1.23.0629"						                //24=4+(19)+1	
 #define	IAP2_IDENT_ID05_HARDWARE_VERSION	    "1.02.00"							            //24=4+(19)+1	
 #define	IAP2_IDENT_ID0A_PROTOCOL			    "com.comtrue-inc.eaprotocol.data"	            //64=4+5*2+4+(45)+1	
 #define	IAP2_IDENT_ID0B_TEAMID				    "J69739G944"						            //16=4+(11)+1	
@@ -25,7 +25,7 @@
 
 #define IAP2_MSG_LAUNCH_APP					    "com.comtrue-inc.samplecode.EADemo"	            //56=6+4+(45)+1	
 #define	IAP2_MSG_LAUNCH_APP_LEN                 sizeof(IAP2_MSG_LAUNCH_APP)                     //max:45	
-
+/*
 #if(IAP2_SUPPORT_APP)
 #define ID06_ACC_MESSAGE_COUNT				    4                       //4
 #define ID06_ACC_MESSAGE_SETS                   {0xAE00,0xAE02,0xAE03,0xEA02}  //{0xAE00,0xAE02,0xAE03,0xEA02,}
@@ -41,8 +41,31 @@
 #define ID07_DEV_MESSAGE_COUNT				    1                       //3
 #define ID07_DEV_MESSAGE_SETS                   {0xAE01}                //{0xAE01,0xEA00,0xEA01,}
 #endif
+*/
+#if(IAP2_SUPPORT_POWER && IAP2_SUPPORT_EA)
+	#define ID06_ACC_MESSAGE_COUNT				    4                       //4
+	#define ID06_ACC_MESSAGE_SETS                   {0xAE00,0xAE02,0xAE03,0xEA02}  //{0xAE00,0xAE02,0xAE03,0xEA02,}
+	#define ID07_DEV_MESSAGE_COUNT				    3                       //3
+	#define ID07_DEV_MESSAGE_SETS                   {0xAE01,0xEA00,0xEA01}                //{0xAE01,0xEA00,0xEA01,}
+#elif (IAP2_SUPPORT_POWER)
+	#define ID06_ACC_MESSAGE_COUNT				    3                       //4
+	#define ID06_ACC_MESSAGE_SETS                   {0xAE00,0xAE02,0xAE03}  //{0xAE00,0xAE02,0xAE03,0xEA02,}
+	#define ID07_DEV_MESSAGE_COUNT				    1                       //3
+	#define ID07_DEV_MESSAGE_SETS                   {0xAE01}                //{0xAE01,0xEA00,0xEA01,}
+#elif (IAP2_SUPPORT_EA)
+	#define ID06_ACC_MESSAGE_COUNT				    1                       //4
+	#define ID06_ACC_MESSAGE_SETS                   {0xEA02}  //{0xAE00,0xAE02,0xAE03,0xEA02,}
+	#define ID07_DEV_MESSAGE_COUNT				    2                       //3
+	#define ID07_DEV_MESSAGE_SETS                   {0xEA00,0xEA01}                //{0xAE01,0xEA00,0xEA01,}
+#else
+	#define ID06_ACC_MESSAGE_COUNT				    0                       //4
+	#define ID06_ACC_MESSAGE_SETS                   
+	#define ID07_DEV_MESSAGE_COUNT				    0                       //3
+	#define ID07_DEV_MESSAGE_SETS                   
+#endif
 
-
+#define IAP2_POWER_CAPABILITY						((IAP2_SUPPORT_POWER)?0x02:0x00)
+#define IAP2_MAX_POWER_DRAWN 						((IAP2_SUPPORT_POWER)?0:100)
 typedef struct _IAP2_ID_INFO_
 {
 	uint16_t	len;
@@ -253,12 +276,12 @@ code IAP2_ID07_INFO id07_dev_message = {
 
 code IAP2_ID08_INFO id08_power_capability = {
 	sizeof(IAP2_ID08_INFO), 8,
-	0x02,
+	IAP2_POWER_CAPABILITY,
 };
 
 code IAP2_ID09_INFO id09_max_power_drawn = {
 	sizeof(IAP2_ID09_INFO), 9,
-	0,	
+	IAP2_MAX_POWER_DRAWN,	
 };
 
 code IAP2_ID0A_INFO id0a_ea_protocol = {
@@ -363,33 +386,22 @@ code IAP2_LAUNCH_APP_MSG msg_launch_app = {
 	(IAP2_MSG_LAUNCH_APP_LEN+4), 0, IAP2_MSG_LAUNCH_APP,
 };
 
+code BYTE msg_acc_no_data[]={
+    0x00,
+};
+
 code BYTE* active_msg_table[]={
-	msg_acc_start_power_update,             //AE00
 #if (IAP2_SUPPORT_POWER)
+	msg_acc_start_power_update,             //AE00
 	msg_acc_power_source_update1,           //AE03/1A
-#else
-	msg_acc_power_source_update0,           //AE03/0A
 #endif
 #if (IAP2_SUPPORT_APP)
 	(BYTE*)&msg_launch_app,
 #endif
+	msg_acc_no_data,
 };
 
-#define ACTIVE_MSG_COUNT    (sizeof(active_msg_table)/sizeof(active_msg_table[0]))
-/*
-code BYTE* msg_table[]={
-	msg_acc_start_power_update,             //AE00
-	msg_acc_power_source_update0,           //AE03/0.0A
-	msg_acc_power_source_update1,           //AE03/1.0A
-	msg_acc_stop_power_update,              //AE02
-	(BYTE*)&msg_launch_app,
-};
-
-code BYTE msg_queue[]={0,2};
-
-#define MESSAGE_COUNT	2
-*/
-
+#define ACTIVE_MSG_COUNT    (sizeof(active_msg_table)/sizeof(active_msg_table[0])-1)
 
 BYTE iAp2GetSynInfo(BYTE *buf)
 {
@@ -431,8 +443,8 @@ BYTE iAp2GetActiveMsgCount(void)
 
 BYTE iAp2GetMsgInfo(BYTE idx, BYTE *buffer)
 {
-    BYTE i,*pbuf;
 	BYTE len=0;
+    BYTE i,*pbuf;
 	pbuf  = active_msg_table[idx];
 	if(pbuf)
 	{

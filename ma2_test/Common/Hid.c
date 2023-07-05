@@ -4,13 +4,16 @@
 #include "MI2C.h"
 #include "Spiflash.h"
 #include "Entity.h"
+
+#define _CTUSB_HID_C_
 #include "Hid.h"
+#undef  _CTUSB_HID_C_
 
 #define     HID_PRINT_INFO              1
 #define     HID_PRINT_COMMAND           0
 #define     HID_PRINT_DATA              0
 
-#define     HID_VOLUME_PID              3
+#define     HIDIN_KEY_PID               3
 
 #define     HID_USE_PARSE               0
 
@@ -219,7 +222,7 @@ void HidInSetStatus(BYTE value)
 	BYTE 	old_bank;
 
 	old_bank = hw_regs[0x00];
-    usb_hid_in_data[0]=HID_VOLUME_PID;		
+    usb_hid_in_data[0]=HIDIN_KEY_PID;		
     usb_hid_in_data[1]=value;		
 	McuWriteReg(0x00,BANK_HID);
 	McuWriteRegMask(0x07,0x01,0x01);

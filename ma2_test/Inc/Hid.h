@@ -66,9 +66,16 @@ enum
 typedef struct _HID_GOLBAL_INFO
 {
     BYTE    flags;
-    BYTE    hid_state;
-    BYTE    hid_usage;
+    BYTE    status;
+    BYTE    state;
+    BYTE    usage;
 } HID_GOLBAL_INFO, *PHID_GOLBAL_INFO;	
+
+#ifdef	_CTUSB_HID_C_
+HID_GOLBAL_INFO hid={0};
+#else
+extern HID_GOLBAL_INFO hid;
+#endif
 //	------------------------------------
 //		Function Prototypes
 //	------------------------------------

@@ -9,7 +9,7 @@ void CodecInit(BYTE slave, WORD in_addr, WORD out_addr)
 #if (DAC_TYPE==DAC_CT7302) 
     Mi2cInit(slave,in_addr,out_addr);
 
-    Mi2cWriteByte(0x10,0xC0);
+//    Mi2cWriteByte(0x10,0xC0);
     Mi2cWriteByte(0x11,0x00);
     Mi2cWriteByte(0x12,0x08);
     Mi2cWriteByte(0x13,0x00);
@@ -23,30 +23,35 @@ void CodecInit(BYTE slave, WORD in_addr, WORD out_addr)
     Mi2cWriteByte(0x3B,0x77);
     Mi2cWriteByte(0x40,0x02);
     Mi2cWriteByte(0x45,0x00);
-    Mi2cWriteByte(0x4E,0x77);
+//    Mi2cWriteByte(0x4E,0x77);
 	Mi2cWriteByte(0x47,0xA4);
 	Mi2cWriteByte(0x49,0x00);       // disable dpop timer
-	Mi2cWriteByte(0x4A,0x42);       // freerun
+//	Mi2cWriteByte(0x4A,0x42);       // free run 
     Mi2cWriteByte(0x4D,0x37);
     Mi2cWriteByte(0x59,0x2D);
     Mi2cWriteByte(0x5F,0x4B);
     Mi2cWriteByte(0x61,0x08);
     Mi2cWriteByte(0x62,0x01);
 
-    Mi2cWriteByte(0x04,0x30);       // SRC mode 3, Input source SPIDF
+    //KF 221122 for DOP/PCM noise
+    Mi2cWriteByte(0x10,0xE0);
+    Mi2cWriteByte(0x4A,0x41);
+    Mi2cWriteByte(0x4B,0xB0);
+    Mi2cWriteByte(0x4E,0x00);
+
+    Mi2cWriteByte(0x04,0x30);       // SRC mode 3, 0:spdif in, 6:Input source I2S1
     Mi2cWriteByte(0x05,0x09);       // Output Freq 192K
     Mi2cWriteByte(0x06,0x48);       // spdif out 24bits + unmute
 
-    // test 220727
+    // test 220727 for old board
     //Mi2cSetSlave(0x26);
     //Mi2cWriteByte(0x04,0x36);       // SRC mode 3, Input source I2S1
     //Mi2cWriteByte(0x05,0x09);       // Output Freq 192K
     //Mi2cWriteByte(0x06,0x48);       // spdif out 24bits + unmute
     //Mi2cSetSlave(slave);
-#endif 
     CodecSetMute(0);
+#endif 
 }
-
 void CodecSetMute(BYTE mute)
 {
 #if (DAC_TYPE==DAC_CT7302) 
@@ -55,7 +60,6 @@ void CodecSetMute(BYTE mute)
     Mi2cWriteByteMask(0x07,mute?0x03:0x00,0x03); 
 #endif         
 }
-
 /*
 #define Codec_CS42L42       0
 

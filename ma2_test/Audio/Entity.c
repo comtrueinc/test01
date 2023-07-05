@@ -37,11 +37,12 @@ void EntityInit(void)
     printf("EntityInit(base=%x",HIBYTE(USB_ENTITY_DATA_BASE));
     printf("%x)\r\n",LOBYTE(USB_ENTITY_DATA_BASE));
     EntitySetFreqBase();
-#if (UAC_TYPE == TYPE_UAC2)
-    EntitySetBase();
-    EntitySetFreqRange(IF_PLAYBACK);        //Playback
-    EntitySetFreqRange(IF_RECORD);          // Record
-#endif
+    if (au.uac_type == TYPE_UAC2)
+    {
+	    EntitySetBase();
+	    EntitySetFreqRange(IF_PLAYBACK);        //Playback
+	    EntitySetFreqRange(IF_RECORD);          // Record
+    }
     
     EntitySetJackBase();
 
@@ -60,7 +61,8 @@ void EntitySetFreqBase(void)
 
 	McuWriteReg(0x00,BANK_EP0);
 
-#if(UAC_TYPE == TYPE_UAC2)
+    if(au.uac_type == TYPE_UAC2)
+    {
     // for Playback Freq current
     reg         = CS01_FREQ_CURR_REG;    
     base        = CS01_FREQ_CURR_BASE;
@@ -152,8 +154,9 @@ void EntitySetFreqBase(void)
     // Set current clock valid TRUE
     McuWriteMemS(base,1);
     DEBUG_PRINT(ENTITY_PRINT_REG,"CS02_FREQ_VALID_REG:%x\r\n",reg);
-
-#else
+    }
+    else
+    {
     reg = CS01_FREQ_CURR_REG;    
     base = CS01_FREQ_CURR_BASE;
 //    temp_freq = SAMPLE_RATE_48K;
@@ -227,19 +230,19 @@ void EntitySetFreqBase(void)
     //McuWriteMemS(addr++,(BYTE)((temp_freq>>24)&0xFF));
     
     McuWriteMem4(base,SAMPLE_RATE_48K);
-#endif
+    }
 
 }
 
-#if(UAC_TYPE == TYPE_UAC2)
-void EntitySetFreqRange(BYTE iface)
+//#if(UAC_TYPE == TYPE_UAC2)
+void EntitySetFreqRange(BYTE index)
 {
     BYTE    reg,i,j,id;
     WORD    base,addr,freq_count, freq_flags;
     DWORD   temp_freq; 
     DWORD   active_freq_set[FREQ_MAX_COUNT]={0}; 
 
-    switch(iface)
+    switch(index)
     {
     case IF_PLAYBACK:
         // for Playback Freq Range
@@ -350,6 +353,7 @@ void EntitySetBase(void)
 
 	McuWriteReg(0x00,BANK_EP0);
     
+
     //for Playbck Alternate Valid (Control Selector=2)
     //0x01:AS_ACT_ALT_SETTING_CONTROL
     //0x02:AS_VAL_ALT_SETTINGS_CONTROL
@@ -412,7 +416,7 @@ void EntitySetBase(void)
     McuWriteReg(0xDF,0x07);             //only for mask/skip bit0-2 for offset 4
     DEBUG_PRINT(ENTITY_PRINT_REG,"reg:%x\r\n",reg);
 }
-#endif    
+//#endif        
 
 void EntitySetVolumeRange(BYTE id)
 {
@@ -491,21 +495,26 @@ void EntitySetVolumeRange(BYTE id)
     for(i=0;i<3;i++)
     {
         //addr=(index==1)?(FU01_VOLUME_BASE+i*10):(FU02_VOLUME_BASE+i*10); 
-#if(UAC_TYPE == TYPE_UAC2)
+   if(au.uac_type == TYPE_UAC2)
+    {
+
         McuWriteMem2(addr,vol_curr);
         McuWriteMem2(addr+2,1);         // count=1
         McuWriteMem2(addr+4,vol_min);
         McuWriteMem2(addr+6,vol_max);
         McuWriteMem2(addr+8,vol_step);
         addr+= 10;
-#else
+    }
+    else
+    {
+
         McuWriteMem2(addr,vol_curr);
         McuWriteMem2(addr+2,vol_min);
         McuWriteMem2(addr+4,vol_max);
         McuWriteMem2(addr+6,vol_step);
         McuWriteMem2(addr+8,0);
         addr+= 10;
-#endif
+    }
     }
 }
 void EntitySetVolumeBase(void)

@@ -21,9 +21,10 @@ void BulkInit(BYTE uac_type)
 	McuWriteReg(0x00,BANK_BULK);
     //endpoint=0x07
 	//McuWriteReg(0x01,0x10|ENDPOINT_BLUK_OUT);                              
-	McuWriteReg(0x01,0x17);                              
-    McuWriteReg(0x02,(TYPE_UAC2 == uac_type)?0x00:0x40);	            
-    McuWriteReg(0x03,(TYPE_UAC2 == uac_type)?0x02:0x00);	            
+	McuWriteReg(0x01,0x17); 
+	//uac2:0x200(512) uac1:0x40(64)                             
+    McuWriteReg(0x02,(uac_type==TYPE_UAC2)?0x00:0x40);	            
+    McuWriteReg(0x03,(uac_type==TYPE_UAC2)?0x02:0x00);	            
 	//out addr=0x700-0x77F
 	McuWriteReg(0x05,HIBYTE(USB_BULK_OUT_DATA_ADDR));
 	McuWriteReg(0x04,LOBYTE(USB_BULK_OUT_DATA_ADDR));

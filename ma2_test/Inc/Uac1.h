@@ -6,38 +6,38 @@
 
 #ifdef  _CTUSB_DESCRIPTOR_C_
 
-typedef struct _DESCRIPTOR_INFO_
-{
-    WORD    len;
-    BYTE    *buffer;
-}DESCRIPTOR_INFO, *PDESCRIPTOR_INFO;	
+//typedef struct _DESCRIPTOR_INFO_
+//{
+//    WORD    len;
+//    BYTE    *buffer;
+//}DESCRIPTOR_INFO, *PDESCRIPTOR_INFO;	
 
-#define     MANUFACTURER_NAME           "Comtrue"               //"mCore"
-#define     SERIAL_NUMBER               "221026A1"
+#define     MANUFACTURER_NAME1           "Comtrue"               //"mCore"
+#define     SERIAL_NUMBER1               "CT2306A1"
 
-#define     VID                         0x2FC6                  //0x1403  //0x2FC6      
+#define     VID1                         0x2FC6                  //0x1403  //0x2FC6      
 
-#if (UAC_TYPE==TYPE_UAC1_FS)
-#define     PRODUCT_NAME                "CT7702 UAC1/FS"        //"mCore Audio UBox"
-#define     PID                         0x7021                   //0x3388  //0x6002 Test for Bulk
+#if (UAC_TYPE&TYPE_UAC1_FS)
+#define     PRODUCT_NAME1                "CT7702 UAC1/FS"        //"mCore Audio UBox"
+#define     PID1                         0x7021                  //0x3388  //0x6002 Test for Bulk
 #else
-#define     PRODUCT_NAME                "CT7702 UAC1/HS"        //"mCore Audio UBox"
-#define     PID                         0x7022                  //0x3388  //0x8001
+#define     PRODUCT_NAME1                "CT7702 UAC1/HS"        //"mCore Audio UBox"
+#define     PID1                         0x7022                  //0x3388  //0x8001
 #endif
 
-#define     PLAYBACK_NAME               "Playback"
-#define     RECORD_NAME                 "Record"
-#define     HID_NAME                    "Hid"
-#define     IAP_NAME                    "iAP Interface"
+//#define     PLAYBACK_NAME               "Playback"
+//#define     RECORD_NAME                 "Record"
+//#define     HID_NAME                    "Hid"
+//#define     IAP_NAME                    "iAP Interface"
 
-#define     MANUFACTURER_NAME_LEN       (sizeof(MANUFACTURER_NAME)-1)
-#define     PRODUCT_NAME_LEN            (sizeof(PRODUCT_NAME)-1)
-#define     SERIAL_NUMBER_LEN           (sizeof(SERIAL_NUMBER)-1)
+#define     MANUFACTURER_NAME_LEN1       (sizeof(MANUFACTURER_NAME1)-1)
+#define     PRODUCT_NAME_LEN1            (sizeof(PRODUCT_NAME1)-1)
+#define     SERIAL_NUMBER_LEN1           (sizeof(SERIAL_NUMBER1)-1)
 
-#define     PLAYBACK_NAME_LEN           (sizeof(PLAYBACK_NAME)-1)
-#define     RECORD_NAME_LEN             (sizeof(RECORD_NAME)-1)
-#define     HID_NAME_LEN                (sizeof(HID_NAME)-1)
-#define     IAP_NAME_LEN                (sizeof(IAP_NAME)-1)
+//#define     PLAYBACK_NAME_LEN           (sizeof(PLAYBACK_NAME)-1)
+//#define     RECORD_NAME_LEN             (sizeof(RECORD_NAME)-1)
+//#define     HID_NAME_LEN                (sizeof(HID_NAME)-1)
+//#define     IAP_NAME_LEN                (sizeof(IAP_NAME)-1)
      
 #define     CT_UAC1_DEVICE_DESC_ADDR    USB_DESC_DATA_BASE
 
@@ -69,8 +69,8 @@ code BYTE uac1_device_desc_buffer[] = {
     0x00,                               /* bDeviceSubClass */
     0x00,                               /* bDeviceProtocol */
     0x40,                               /* bMaxPacketSize0 (64) */
-    LOBYTE(VID),HIBYTE(VID),            /* idVendor */
-    LOBYTE(PID),HIBYTE(PID),            /* idProduct */
+    LOBYTE(VID1),HIBYTE(VID1),            /* idVendor */
+    LOBYTE(PID1),HIBYTE(PID1),            /* idProduct */
     0x01,0x01,                          /* bcdDevice (1.00) */
     0x01,                               /* iManufacturer */
     0x02,                               /* iProduct */
@@ -104,14 +104,14 @@ code BYTE uac1_hid_report_buffer[] =
 #if (UAC1_HIDINOUT_TEST ==1)
     //181227++ for HID I/O Test
         0xA1, 0x02,                     //   Collection (Logical)                                                                 
-        	0x85, 0x03,                     //     Report ID (3)                                                                      
+        	0x85, 0x04,                     //     Report ID (3)                                                                      
         	0x75, 0x08,                     //     Report Size (8)                                                                    
         	0x95, 0x2F,                     //     Report Count (47+1=48)                                                                  
         	0x09, 0x01,                     //     Usage (Pointer)                                                                    
         	0x81, 0x02,                     //     Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)               
         0xC0,                           //   End Collection                                                                       
         0xA1, 0x02,                     //   Collection (Logical)                                                                 
-        	0x85, 0x04,                     //     Report ID (4)                                                                      
+        	0x85, 0x05,                     //     Report ID (4)                                                                      
         	0x75, 0x08,                     //     Report Size (8)                                                                    
         	0x95, 0x2F,                     //     Report Count (47+1=48)                                                                  
         	0x09, 0x01,                     //     Usage (Pointer)                                                                    
@@ -131,9 +131,9 @@ code BYTE uac1_hid_report_buffer[] =
 		0x25,0x01,	// LOGICAL_MAXIMUM (1)
 		0x09,0xE9,	// USAGE (Volume Increment)
 		0x09,0xEA,	// USAGE (Volume Decrement)
-		0x09,0xCD,	// USAGE (Play/Stop)
+		0x09,0xCD,	// USAGE (Play/Pause)
 		0x09,0xE2,	// USAGE (Mute)
-		0x09,0xB7,	// USAGE (STOP)
+		0x09,0xB7,	// USAGE (Stop)
 		0x09,0xB5,	// USAGE (Scan Next Track)
 		0x09,0xB6,	// USAGE (Scan Previous Track)
 		0x75,0x01,	// REPORT Size(1)
@@ -154,11 +154,11 @@ code BYTE uac1_dev_qualify_buffer[]={
     };
 #define     CT_UAC1_DEV_QUALIFY_DESC_LEN   sizeof(uac1_dev_qualify_buffer)
 
-code DESCRIPTOR_INFO string_table[] = 
+code DESCRIPTOR_INFO string_table1[] = 
 {
-    { MANUFACTURER_NAME_LEN,    MANUFACTURER_NAME }, 
-    { PRODUCT_NAME_LEN,         PRODUCT_NAME }, 
-    { SERIAL_NUMBER_LEN,        SERIAL_NUMBER }, 
+    { MANUFACTURER_NAME_LEN1,    MANUFACTURER_NAME1 }, 
+    { PRODUCT_NAME_LEN1,         PRODUCT_NAME1 }, 
+    { SERIAL_NUMBER_LEN1,        SERIAL_NUMBER1 }, 
     { PLAYBACK_NAME_LEN,        PLAYBACK_NAME }, 
     { RECORD_NAME_LEN,          RECORD_NAME }, 
     { HID_NAME_LEN,             HID_NAME }, 
@@ -167,7 +167,7 @@ code DESCRIPTOR_INFO string_table[] =
 #endif
 };
 
-#define UAC1_STRINGS_MAX_COUNT          (sizeof(string_table)/sizeof(string_table[0]))     
+#define UAC1_STRINGS_MAX_COUNT          (sizeof(string_table1)/sizeof(string_table1[0]))     
 
 
 #define     UAC1_PLAY0_FU_ENABLE                1
@@ -754,7 +754,7 @@ code BYTE uac1_config_header[]={
     0x09,0x02,LE_ARRAY(UAC1_CONFIG_DESC_LEN),UAC1_INTERFACE_NUM,0x01,0x00,POWER_CONFIG,
 };	
 
-code DESCRIPTOR_INFO config_desc_table[] = 
+code DESCRIPTOR_INFO config_desc_table1[] = 
 {
     { 9,    						    uac1_config_header }, 
     { 9,         					    uac1_audio_control_default }, 
@@ -769,7 +769,7 @@ code DESCRIPTOR_INFO config_desc_table[] =
 #endif 
 };
 
-#define UAC1_CONFIG_MAX_COUNT           (sizeof(config_desc_table)/sizeof(config_desc_table[0]))     
+#define UAC1_CONFIG_MAX_COUNT           (sizeof(config_desc_table1)/sizeof(config_desc_table1[0]))     
 
 
 #endif //_CTUSB_DESCRIPTOR_C_

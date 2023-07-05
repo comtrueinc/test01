@@ -1,7 +1,7 @@
 #define _CTUSB_MAIN_C_
 #include "Reg51.h"
 #include "Mcu.h"
-#include <stdlib.h>
+//#include <stdlib.h>
 #undef  _CTUSB_MAIN_C_ 
 
 #include "Uart.h"
@@ -9,6 +9,7 @@
 #include "Audio.h"
 #include "Mi2c.h"
 #include "Spiflash.h"
+#include "Gpio.h"
 #include "Hid.h"
 #include "Bulk.h"
 #include "Codec.h"
@@ -17,8 +18,6 @@
 
 #define     PRINT_FLAGS_AUDIO           0
 #define     PRINT_FLAGS_PLAYBACK        0
-#define     PRINT_GPIO_COMMON           0
-//#define     COMMON_PRINT_GPIO           1
 
 #if (PRINT_FLAGS_AUDIO)
 #define DBGPRINT_FLAGS_AUDIO(_FMT_,_X_)             printf(_FMT_,_X_)
@@ -32,10 +31,11 @@
 #define DBGPRINT_FLAGS_PLAYBACK(_FMT_,_X_)         
 #endif
 
-#if (PRINT_GPIO_COMMON)
-#define DBGPRINT_GPIO_COMMON(_FMT_,_X_)          printf(_FMT_,_X_)
+#define     PRINT_HID_COMMON            0
+#if (PRINT_HID_COMMON)
+#define DBGPRINT_HID_COMMON(_FMT_,_X_)          printf(_FMT_,_X_)
 #else
-#define DBGPRINT_GPIO_COMMON(_FMT_,_X_)         
+#define DBGPRINT_HID_COMMON(_FMT_,_X_)         
 #endif
 
 
@@ -44,10 +44,11 @@
 #define MAGIC_CODE_VALUE                0x54538020
 
 BYTE    debug_flags;
-BYTE    hid_status=0;
-BYTE    hid_usage=0;
+//BYTE    hid_status=0;
+//BYTE    hid_usage=0;
 BYTE    hid_state=0;
 BYTE    jd_state=0,jd_status=0;
+
 
 #if (REBOOT_BY_PAGEID)
 void    CheckMagic(void)
@@ -83,6 +84,14 @@ void    UsbCmdDone(void)
     McuWriteReg(0x00,old_bank);
 }
 
+void GetUacType(void)
+{
+#if(UAC_TYPE==TYPE_UAC_DETECT)
+    au.uac_type = TYPE_UAC2;
+#else
+    au.uac_type= UAC_TYPE;
+#endif
+}
 void AudioHandler(void)
 {
     // for USB control packet
@@ -149,7 +158,8 @@ void AudioHandler(void)
         //AudioSetOutput();
         //UsbCmdDone();
         DBGPRINT_FLAGS_AUDIO(".............ready=%x\r\n",au.stream[0].ready);
-        Delay100us(1500);
+        //Delay100us(1500);
+        Delay100us(10);
         UsbCmdDone();
         au.flags &= ~(AUDIO_FLAGS_FREQ1);
         au.stream[0].flags |= PLAYBACK_FLAGS_NEW_FORMAT;
@@ -237,10 +247,10 @@ void AudioHandler(void)
         //CodecSetMute(1);
         //Mi2cWriteByte(0x06,0xC8);    //set 7302 mute
         au.stream[0].flags &= ~(PLAYBACK_FLAGS_NOT_READY);
+        DBGPRINT_FLAGS_PLAYBACK("{nready/%x}\r\n",au.stream[0].ready);
     }
     if(au.stream[0].flags&PLAYBACK_FLAGS_NEW_FORMAT)
     {
-        DBGPRINT_FLAGS_PLAYBACK("p0(type:%x)\r\n",au.stream[0].type);
         //AudioSetMute(1);
         //CodecSetMute(1);
         //Mi2cWriteByte(0x06,0xC8);    //set 7302 mute
@@ -248,7 +258,10 @@ void AudioHandler(void)
         //AudioSetOutput();
         //Delay100us(1500);
         //UsbCmdDone();
+        if(au.drv_cmd==DRIVER_CMD_NDSD_PLAY0_ON || au.drv_cmd==DRIVER_CMD_DSD_PLAY0_START)
+            AudioSetPlayType(ALT_PLAYBACK_NDSD);
         au.stream[0].flags &= ~(PLAYBACK_FLAGS_NEW_FORMAT);
+        DBGPRINT_FLAGS_PLAYBACK("(type:%x)",au.stream[0].type);
     }
     if(au.stream[0].flags&PLAYBACK_FLAGS_DOP_CHANGE)
     {
@@ -270,199 +283,53 @@ void AudioHandler(void)
     }
            
 }
-/*
-void TestTimer(WORD time_max)
-{
-    DWORD   curr_count, prev_count;
-    WORD    i,j;
-    BYTE    tempH,tempM,tempL;
-    curr_count = prev_count =0;
-    McuWriteReg(0x00,BANK_MISC);
-    for(j=0;j<time_max;j++)
-    {
-        for(i=0;i<32;i++)
-        {
-            McuWriteReg(0x77,0x10);
-            tempH = McuReadReg(0x76);
-            tempM = McuReadReg(0x75);
-            tempL = McuReadReg(0x74);
-            curr_count = BYTE_TO_DWORD(0,tempH,tempM,tempL);
-            if(tempM==0 && tempL<=2) printf("M",0);
-            if(curr_count < prev_count)
-            {
-                printf("i:%d,",i);
-                printf("prev:(%x,",(BYTE)((prev_count>>16)&0xFF));
-                printf("%x,",(BYTE)((prev_count>>8)&0xFF));
-                printf("%x),",(BYTE)(prev_count&0xFF));
-                printf("curr:(%x,",tempH);
-                printf("%x,",tempM);
-                printf("%x),",tempL);
-                tempH = McuReadReg(0x76);
-                tempM = McuReadReg(0x75);
-                tempL = McuReadReg(0x74);
-                printf("(%x,",tempH);
-                printf("%x,",tempM);
-                printf("%x)\r\n",tempL);
-            }
-        }
-        prev_count = curr_count;
-        McuWriteReg(0xA0,HIBYTE(j));
-        McuWriteReg(0xA1,tempH);
-        McuWriteReg(0xA2,tempM);
-        McuWriteReg(0xA3,tempL);
-    }
-    printf("test...%x\r\n",i);
-}
-*/
-#if (HID_GPIO_KEY==1)
-
-#define GPIO_VOL_UP_FLAG    0x10        //GPIOB4
-#define GPIO_VOL_DOWN_FLAG  0x02        //GPIOB1
-#define GPIO_PAUSE_FLAG     0x04        //GPIOB2
-#define GPIO_MUTE_FLAG      0x00        //GPIOB2
-#define GPIO_STOP_FLAG      0x00        //GPIOB2
-
-#define GPIO_KEY_COUNT      3   
-
-BYTE    btn_count[GPIO_KEY_COUNT]={0};
-BYTE    debounding_max = 80;
-
-void GpioHandler(void)
-{
-    BYTE old_bank, curr_status, i;
-    BYTE key_flags[]={GPIO_VOL_UP_FLAG, GPIO_VOL_DOWN_FLAG, GPIO_PAUSE_FLAG};           
-    old_bank = McuReadReg(0x00);
-    McuWriteReg(0x00,BANK_MISC1);
-    //reg/status      0/1:press, 1/0:release
-    //GPIOB:B02_10-13 10:On/Off, 11:Out Data, 12:In/Out, 13:In Status 
-    
-    //curr_status = McuReadReg(0x0B);   //GPIOA:B02_08-0B
-    curr_status = McuReadReg(0x13);     //GPIOB:B02_10-13 10:On/Off, 11:Out Data, 12:In/Out, 13:In Status 
-    for(i=0;i<GPIO_KEY_COUNT;i++)
-    {
-        if((curr_status&key_flags[i])==0)       //B4 Vol+
-        { 
-            if(btn_count[i]<250) btn_count[i]++;
-        }
-        else                 
-            btn_count[i]=0;
-
-        if(btn_count[i]>debounding_max){
-            printf("[gpio_status=%x,",curr_status);
-            printf("i=%i,",i);
-            printf("debound_count=%i]\r\n",btn_count[i]);
-            hid_status |= (1<<i);                //for  keys
-            hid_state = STATE_HID_WAIT_TRIGGER;
-            btn_count[i]=0;
-        }
-    }  
-/*
-    if((curr_status&0x10)==0)       //B4 Vol+
-    { 
-        if(btn0_count<250) btn0_count++;
-    }
-    else                 
-        btn0_count=0;
-         
-    if((curr_status&0x02)==0)       //B1 Vol-
-    { 
-        if(btn1_count<250) btn1_count++;
-    }
-    else                 
-        btn1_count=0;
-
-    if(btn0_count>debounding_max){
-        hid_status |= 0x01;                //for  vol+
-        hid_state = STATE_HID_WAIT_TRIGGER;
-        btn0_count=0;
-        printf("gpio_status0=%x,",curr_status);
-        printf("debound=%x,\r\n",debounding_max);
-    }
-
-    if(btn1_count>debounding_max){
-        hid_status |= 0x02;                //for vol-
-        hid_state = STATE_HID_WAIT_TRIGGER;
-        btn1_count=0;
-        printf("gpio_status1=%x,",curr_status);
-        printf("debound=%x,\r\n",debounding_max);
-    }
-*/
-    /*
-    if((curr_status&0x01)==0)
-    { 
-        if(btn0_count++>debounding_max)
-        {
-            gpio_status |= 0x01;
-            printf("gpio_status0=%x,",curr_status);
-            printf("debound=%x,\r\n",debounding_max);
-        }
-    }
-    else
-    {
-        btn0_count=0;
-    }
-    /*
-    if((curr_status&0x02)==0)
-    { 
-        if(btn1_count++>debounding_max)
-        {
-            gpio_status |= 0x02;
-            printf("gpio_status=%x,",curr_status);
-            printf("debound=%x,1\r\n",debounding_max);
-        }
-    }
-    else
-    {
-        btn1_count=0;
-    }
-    */
-    McuWriteReg(0x00,old_bank);
-
-}
-#endif
-
 void HidHandler(void)
 {
-	switch(hid_state)
+#if (HID_GPIO_KEY)
+    GpioMonitor();
+    //hid_status=gpio.hid_status;
+    //gpio.hid_status=0;
+#endif
+	switch(hid.state)
 	{
 		case STATE_HID_WAIT_TRIGGER:
-			if(hid_status)
+			if(hid.status)
 			{
                 //if(hid_usage)
                 //{
                 //    hid_state = STATE_HID_SET_STATUS;
                 //    DBGPRINT_GPIO_COMMON(">> HID_SET_STATUS (state=%x,",hid_state);
                 //}
-                hid_usage = hid_status;
-                hid_state = STATE_HID_SET_STATUS;
-                DBGPRINT_GPIO_COMMON(">> HID_SET_STATUS (state=%x,",hid_state);
-                DBGPRINT_GPIO_COMMON("hid_status=%x)\r\n",hid_status);
-                hid_status = 0;
+                hid.usage = hid.status;
+                hid.state = STATE_HID_SET_STATUS;
+                DBGPRINT_HID_COMMON(">> HID_SET_STATUS (state=%x,",hid.state);
+                DBGPRINT_HID_COMMON("hid_status=%x)\r\n",hid.status);
+                hid.status = 0;
             }    			
 			break;
         case STATE_HID_SET_STATUS:
-			HidInSetStatus(hid_usage);
-            hid_state = STATE_HID_WAIT_SEND;
-            DBGPRINT_GPIO_COMMON(">> HID_WAIT_SEND(state=%x,",hid_state);
-            DBGPRINT_GPIO_COMMON("usage=%x)\r\n",hid_usage);
+			HidInSetStatus(hid.usage);
+            hid.state = STATE_HID_WAIT_SEND;
+            DBGPRINT_HID_COMMON(">> HID_WAIT_SEND(state=%x,",hid.state);
+            DBGPRINT_HID_COMMON("usage=%x)\r\n",hid.usage);
             break;
 		case STATE_HID_WAIT_SEND:
 			if(HidInSendOK())
 			{
-                hid_state = STATE_HID_SET_NORMAL;
-                DBGPRINT_GPIO_COMMON(">> HID_SET_NORMAL (state=%x)\r\n",hid_state);
+                hid.state = STATE_HID_SET_NORMAL;
+                DBGPRINT_HID_COMMON(">> HID_SET_NORMAL (state=%x)\r\n",hid.state);
 			}
 			break;
 		case STATE_HID_SET_NORMAL:
 			HidInSetStatus(0x00);
-            hid_state = STATE_HID_WAIT_FINISH;
-            DBGPRINT_GPIO_COMMON(">> HID_WAIT_FINISH (state=%x)\r\n",hid_state);
+            hid.state = STATE_HID_WAIT_FINISH;
+            DBGPRINT_HID_COMMON(">> HID_WAIT_FINISH (state=%x)\r\n",hid.state);
             break;
 		case STATE_HID_WAIT_FINISH:
 			if(HidInSendOK())
 			{
-                hid_state = STATE_HID_WAIT_TRIGGER;
-                DBGPRINT_GPIO_COMMON(">> HID_WAIT_TRIGGER (state=%x)\r\n",hid_state);
+                hid.state = STATE_HID_WAIT_TRIGGER;
+                DBGPRINT_HID_COMMON(">> HID_WAIT_TRIGGER (state=%x)\r\n",hid.state);
 			}						  
 			break;
 		default:
@@ -507,30 +374,6 @@ void JackDetectHandler(void)
 void iAP2Handler(void)
 {
     iAp2StateMachine();
-    //printf("[t%i",iap2.bulkout_count);
-    //printf(":%x",HIBYTE(iap2.test_timer));
-    //printf("%x]\r\n",LOBYTE(iap2.test_timer));
-
-    /*
-    if (iap2.bulkout_count>0 && iap2.bulkout_count<6)
-    {
-        BYTE len;
-        WORD offset,baddr;
-        hw_regs[0x00]= 0x14;
-        baddr = BYTE_TO_WORD(hw_regs[0x0D],hw_regs[0x0C]);
-        offset = baddr-USB_BULK_OUT_DATA_ADDR;
-        len = hw_regs[0x0A];
-
-        printf("<<%i:,",iap2.bulkout_count);
-        printf("len:%x,",len);
-        printf("offset:%x,",LOBYTE(offset));
-        printf("[%x,", usb_bulkout_data[3]);
-        printf("%x],", usb_bulkout_data[offset+3]);
-        printf("baddr:%x",HIBYTE(baddr));
-        printf("%x\r\n",LOBYTE(baddr));
-        hw_regs[0x00] = 0x00;
-    }
-    */
 }
 #endif
 /*
@@ -658,9 +501,25 @@ void DebugHandler(void)
             else
             {
                 McuWriteReg(0x93,para1);
-                if(para1&0x80)   au.drv_cmd = para1; // ASIO command
-                //printf("driver cmd:%x\r\n",para1);
+                au.drv_cmd = para1; // ASIO command
+                switch(au.drv_cmd)
+                {
+                    case DRIVER_CMD_DSD_PLAY0_START:
+                    case DRIVER_CMD_NDSD_PLAY0_ON:
+                        au.stream[0].flags |= PLAYBACK_FLAGS_NEW_FORMAT;
+                        break;
+                    default:
+                        break;
             }
+                //if(au.drv_cmd==DRIVER_CMD_DSD_PLAY0_START)
+                    //au.flags |= AUDIO_FLAGS_FREQ1;
+            }
+            debug_cmd=0x39;
+            McuWriteReg(0x90,debug_cmd);
+            McuWriteReg(0x91,0x00);
+            //McuWriteReg(0x92,0x00);
+            //DBGPRINT_FLAGS_PLAYBACK("<%x/",hw_regs[0x90]);
+            DBGPRINT_FLAGS_PLAYBACK("<%x>,",para1);            
             break;
         case 0x10:
             //Mi2cGetSlave();
@@ -771,9 +630,9 @@ void DebugHandler(void)
             HidFeatureParse();
             break;
         case 0x44:
-            hid_usage = para1;
-            hid_state = STATE_HID_SET_STATUS;
-            DBGPRINT_GPIO_COMMON(">> HID_SET_STATUS (state=%x),",hid_state);
+            hid.usage = para1;
+            hid.state = STATE_HID_SET_STATUS;
+            DBGPRINT_HID_COMMON(">> HID_SET_STATUS (state=%x),",hid.state);
             break;
         case 0x50:
             temp = SpiReadStatus(1);
@@ -863,8 +722,8 @@ void DebugHandler(void)
                 else        printf("ng:%d*64,\r\n",i);    
                 
             }
+            break;
         }
-
 #if (SUPPORT_IAP2)
         case 0xA0:
         {
@@ -1011,8 +870,9 @@ void DebugHandler(void)
             break;
     }
     
-    McuWriteReg(0x00,0x00);
-    if((debug_cmd&0x01)==0)    McuWriteReg(MCU_MAILBOX_CMD,(debug_cmd|0x01));
+    McuWriteReg(0x00,BANK_MISC);
+    //if((debug_cmd != 0) && (debug_cmd&0x01)==0)    McuWriteReg(MCU_MAILBOX_CMD,(debug_cmd|0x01));
+    if(!(debug_cmd&0x01))    McuWriteReg(MCU_MAILBOX_CMD,(debug_cmd|0x01));
     
     McuWriteReg(0x00,old_bank);
     Delay100us(10);
@@ -1023,7 +883,7 @@ void LoadDescriptor(void)
     desc_curr_addr = USB_DESC_DATA_ADDR;
 
     DescriptDevice();
-    DescriptDevQualify();
+    if(au.uac_type==TYPE_UAC2)  DescriptDevQualify();
     DescriptHidReport();
     DescriptStringTable();
     DescriptConfiguration();
@@ -1062,21 +922,6 @@ void DacInit(void)
     Mi2cWriteByte(0x05,0x09);       // Output Freq 192K
 }
 */
-void GpioInit(void)
-{
-    BYTE old_bank;           
-    old_bank = McuReadReg(0x00);
-    McuWriteReg(0x00,BANK_MISC1);
-    // Default GPIO On: A5/A2(0x24) B4-B0(0x1F)
-    McuWriteReg(0x08,0x24);
-//    McuWriteReg(0x10,0x1F);
-//  I2c Slave(1/0), I2c Master (4/3), pwm1/pwm0 (5/2), UART (7/6)
-    McuWriteReg(0x10,0x24);
-    // Default Input
-    McuWriteReg(0x0A,0xFF);
-    McuWriteReg(0x12,0xFF);
-    McuWriteReg(0x00,old_bank);
-}
 void SystemInit(void)
 {
 //    BYTE old_bank;
@@ -1102,29 +947,32 @@ void SystemInit(void)
     jd_state = STATE_JD_WAIT_TRIGGER;
 
 #if (BULK_ENABLE)
-    BulkInit(UAC_TYPE);
+    BulkInit(au.uac_type);
 #endif
 
     CodecInit(DAC_I2C_SLAVE_ADDR,I2C_IN_DATA_ADDR,I2C_OUT_DATA_ADDR);
+
 }
 
 void main(void)
 {
     Mcu_Initial();
-#if (REBOOT_BY_PAGEID)
-    CheckMagic();
-#endif
     McuWriteReg(0x00,BANK_MISC);            
     McuWriteRegMask(0x30,0x00,0x07);    //[0]:HS, [1]:Connect, [2]:Suspand
     McuWriteReg(0x43,0x01);             //[1]:Reset Watch Dog
-
-    McuWriteReg(0xAF,0x72);            
-    printf("CT7702 v0.23.0627(%x)\r\n",hw_regs[0xAF]);
+#if (REBOOT_BY_PAGEID)
+    CheckMagic();
+#endif
+    GetUacType();
+//============================================================================
+    McuWriteReg(0xAF,0x5A);            
+    printf("CT7602 v0.23.0705(%x)\r\n",hw_regs[0xAF]);
     
     AudioInit();
     EntityInit(); 
     LoadDescriptor();
     SystemInit();
+
     McuWriteReg(0x00,BANK_MISC);
     McuWriteReg(0x43,0x02);             //[1]:Stop Watch Dog
 #if(SUPPORT_IAP2)
@@ -1133,25 +981,19 @@ void main(void)
     Delay100us(2000);                                                                           
 
     McuWriteReg(0x00,BANK_MISC);
-#if(UAC_TYPE==TYPE_UAC1_FS)
-    McuWriteRegMask(0x30,0x02,0x07);    //[0]:HS, [1]:Connect, [2]:Suspand
-#else
-    McuWriteRegMask(0x30,0x03,0x07);    //[0]:HS, [1]:Connect, [2]:Suspand
-#endif
+    McuWriteRegMask(0x30,(au.uac_type==TYPE_UAC1_FS)?0x02:0x03,0x07);    //[0]:HS, [1]:Connect, [2]:Suspand
 
-    //printf("whileloop start(R30=%x)...\r\n",hw_regs[0x30]);
     while(1)
     {
         DebugHandler();
-#if (HID_GPIO_KEY)
-        GpioHandler();
-#endif
         HidHandler();
         JackDetectHandler();
         AudioHandler();
-
 #if(SUPPORT_IAP2)
         iAP2Handler();
+#endif
+#if(UART_RX_SUPPORT)
+        SerialDataIn();
 #endif
         if(irq_flags)
         {

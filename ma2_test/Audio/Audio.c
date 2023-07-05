@@ -13,8 +13,8 @@ code WORD FREQ_SYNC_SETTING[10]={441,480,882,960,1764,1920,3528,3840,7056,7680};
 
 //DWORD freq_sets[FREQ_MAX_COUNT]={ SAMPLE_RATE_44K, SAMPLE_RATE_48K, SAMPLE_RATE_88K, SAMPLE_RATE_96K, SAMPLE_RATE_176K, SAMPLE_RATE_192K,
 //                        SAMPLE_RATE_352K, SAMPLE_RATE_384K, SAMPLE_RATE_705K, SAMPLE_RATE_768K,};
-#define     PRINT_AUDIO_COMMON              0
-#define     PRINT_AUDIO_FORMAT              1
+#define     PRINT_AUDIO_COMMON              1
+#define     PRINT_AUDIO_FORMAT              0
 #define     PRINT_AUDIO_MUTE                0
 #define     PRINT_AUDIO_VOL                 0
 #define     PRINT_AUDIO_VOL_INFO            0
@@ -53,8 +53,7 @@ void AudioInit(void)
 {                                            
 	BYTE 	old_bank;
 	old_bank = hw_regs[0x00];
-    DBGPRINT_AUDIO_COMMON("AudioInit(type=%x)\r\n",UAC_TYPE);
-    //printf("AudioInit(type=%x)\r\n",UAC_TYPE);
+    DBGPRINT_AUDIO_COMMON("AudioInit(type=%x)\r\n",au.uac_type);
 
 	McuWriteReg(0x00,BANK_EP0);
 	McuWriteReg(0x08,0xF0);                         //set usb ack timeout 85us*240=20ms
@@ -67,9 +66,9 @@ void AudioInit(void)
     //McuWriteReg(0x04,0x00);	                    //ep1 sram start (high)
     //McuWriteReg(0x03,0xFF);	                    //ep1 sram start (low)
     //printf("0x05(%x)",hw_regs[0x05]);
-    McuWriteReg(0x05,(UAC_TYPE == TYPE_UAC2)?0x40:0x80);	                        //playback ready timeout uac1:0x80(~2ms) uac2:0x10 (~0.25ms)
-    McuWriteReg(0x24,(UAC_TYPE == TYPE_UAC2)?0x40:0x80);	                        //record ready timeout:  uac1:0x80(~2ms) uac2:0x10 (~0.25ms)
-    McuWriteReg(0x0E,(UAC_TYPE == TYPE_UAC1_HS)?0x77:0x00);                         //interval value:   bit7-4: record, bit3-0: play [0: UAC1_FS/UAC2,  7:for UAC1_HS]   
+    McuWriteReg(0x05,(au.uac_type == TYPE_UAC2)?0x40:0x80);	                        //playback ready timeout uac1:0x80(~2ms) uac2:0x10 (~0.25ms)
+    McuWriteReg(0x24,(au.uac_type == TYPE_UAC2)?0x40:0x80);	                        //record ready timeout:  uac1:0x80(~2ms) uac2:0x10 (~0.25ms)
+    McuWriteReg(0x0E,(au.uac_type == TYPE_UAC1_HS)?0x77:0x00);                         //interval value:   bit7-4: record, bit3-0: play [0: UAC1_FS/UAC2,  7:for UAC1_HS]   
     // for record
     //McuWriteReg(0x23,0x01);	                    //sram start (high)
     //McuWriteReg(0x22,0xFF);	                    //sram start (low)
@@ -79,7 +78,7 @@ void AudioInit(void)
 
 	McuWriteReg(0x00,BANK_SYNTH1);
     McuWriteRegMask(0x10,0x40,0x40);	        //sync to SOF
-    McuWriteReg(0x02,(UAC_TYPE == TYPE_UAC2)?0x50:0x0A);	            //Clock Div only work on none-KP mode
+    McuWriteReg(0x02,(au.uac_type == TYPE_UAC2)?0x50:0x0A);	            //Clock Div only work on none-KP mode
 
     McuWriteRegMask(0x0D,(UAC2_PLAY0_FEEDBACK)?0x20:0x00,0x20);	        //Enbale KP mode
 
@@ -571,14 +570,16 @@ void AudioSetRecord(BYTE fi, BYTE bits)
     
 
     //frame_num = (au.hw.uac1)?10:80;
-#if(UAC_TYPE == TYPE_UAC2)
+    /*
+    if(au.uac_type == TYPE_UAC2)
     ch = (bits==16)?ALT_RECORD_16B_CH:2; //au.rec_ch;
-#else
+    else
     ch = (bits==16)?UAC1_REC0_ALT1_CH:2; //au.rec_ch;
-#endif
+    */
+    ch=2;
 	McuWriteRegMask(0x2B,ch,0x0F);	            //max ch
     
-    frame_num =  (UAC_TYPE == TYPE_UAC2)?80:10;
+    frame_num =  (au.uac_type == TYPE_UAC2)?80:10;
     // set min/max len, (samples per frame)*ch
     min_len = ((FREQ_SYNC_SETTING[fi]-1)/frame_num)*((WORD)ch)-1;
     max_len = ((FREQ_SYNC_SETTING[fi]+frame_num)/frame_num)*((WORD)ch)-1;
@@ -610,10 +611,9 @@ void AudioSetPlayType(BYTE index)
 {
 	BYTE 	old_bank;
     old_bank = McuReadReg(0x00);
-    McuWriteReg(0x00,BANK_PLAY0);
 
-    if(au.drv_cmd==DRIVER_CMD_NDSD_PLAY0_ON)
-        index = ALT_PLAYBACK_NDSD;
+//    if(au.drv_cmd==DRIVER_CMD_NDSD_PLAY0_ON || au.drv_cmd==DRIVER_CMD_DSD_PLAY0_START)
+//        index = ALT_PLAYBACK_NDSD;
 /*
     switch(index)
     {
@@ -635,6 +635,7 @@ void AudioSetPlayType(BYTE index)
     }
 */
     
+    McuWriteReg(0x00,BANK_PLAY0);
     if(ALT_PLAYBACK_NDSD==index){
         McuWriteRegMask(0x05,0xC0,0xE0);    //NDSD
         McuWriteRegMask(0x24,0x00,0x02);    //SPDIF CS:PCM

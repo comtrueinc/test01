@@ -64,6 +64,7 @@ typedef struct _AUDIO_GOLBAL_INFO_
     BYTE                entity;
     BYTE                iface;
     BYTE                drv_cmd;
+    BYTE                uac_type;
 //    DWORD               p0_freq;
 //    DWORD               r0_freq;
 //    BYTE                ms_count;

@@ -45,35 +45,15 @@ void Timer0_Init(void)  //Initialize TIMER0
 void Uart_Initial(void)
 {
 	WORD	temp;
-
+ #if (UART_RX_SUPPORT)   
+    BYTE old_bank;
+    old_bank = McuReadReg(0x00);
+    McuWriteReg(0x00,BANK_MISC);
+    // Enable Uart RX channel
+    McuWriteRegMask(0x06,0x01, 0x01);
+    McuWriteReg(0x00,old_bank);
+ #endif   
     ES      = 0;                    				//Disable Serial interrupt
-//  for timer1 mode 2 SMOD=0
-/*
-    SCON    = 0x50;        							// [7:6] = 01 SM=2, REN = enable
-    TR1     = 0;									// Stop baud generate Timer 1
-    TMOD    = ((TMOD & 0x0F) | 0x20);				// [6:5] = 10, 8 bit auto reload
-    TL1     = 0xFC;        		    				// baud rate = 38400 bps at 60MHz OSC
-    TH1     = 0xFC;
-    //TL1     = -(SYSTEM_CLOCK/(12*32*BAUDRATE)); 	// baud rate tolerance must <3%, 9600,19200,38400,76800 is ok.
-    //TH1     = -(SYSTEM_CLOCK/(12*32*BAUDRATE));													  
-    TR1     = 1;									//Start baud rate generate
-//  for timer2
-    T2CON  = 0x34;
-    SCON   = 0x50;
-    PCON   &= 0xBF;
-
-    //  (SYSTEM_CLOCK+16*BAUDRATE)/(32*BAUDRATE)=49(0x31) 
-	//temp = (WORD) ((SYSTEM_CLOCK+(BAUDRATE*16))/(BAUDRATE*32));   //for original 8051
-    PCON  |= 0x40;    // enable ZR UART Mode
-	temp = (WORD) ((SYSTEM_CLOCK+(BAUDRATE/2))/(BAUDRATE));         //for modified 8051          
-
-    RCAP2H = HIBYTE((0xFFFF-temp+1));
-    RCAP2L = LOBYTE((0xFFFF-temp+1));
-
-    TH2    = RCAP2H;
-    TL2    = RCAP2L;
-*/
-
     //desker++ 211004 for new MCU design
 
     SCON   = 0x50;
@@ -81,6 +61,10 @@ void Uart_Initial(void)
 	temp = (WORD) ((SYSTEM_CLOCK/2+BAUDRATE/2)/(BAUDRATE));         //for modified 8051          
     THX    = HIBYTE((0xFFFF-temp+1));
     TLX    = LOBYTE((0xFFFF-temp+1));
+
+    UART_TimeOut_Flag = 0;
+    UART_TimeOut_Count = 0;
+    UART_Buffer_Index = 0;
 
     ES      = 1;
 
@@ -122,10 +106,6 @@ void EXT0_ISR (void) interrupt INTERRUPT_INT0
 	hw_regs[0x11]=status1;         // clear irq flags
 	hw_regs[0x12]=status2;         // clear irq flags
     
-    hw_regs[0x9E]= hw_regs[0x9E]+1;
-	hw_regs[0x9A]= status0;         
-	hw_regs[0x9B]= status1;         
-
 if(status0&0x40)                        //Set Addr
     {
         irq_flags   |=0x01;
@@ -211,10 +191,11 @@ if(status0&0x40)                        //Set Addr
             bulkout_data1[offset+i]=usb_bulkout_data[i];
 */
 #endif
-        hw_regs[0x9D]= hw_regs[0x9D]+1;
+
         irq_flags   |=0x40;
     }
  	
+    // for USB Control Packet
     hw_regs[0x00]=BANK_EP0;
     bm          = hw_regs[0xF0];
     type        = hw_regs[0xF1];
@@ -352,7 +333,7 @@ if(status0&0x40)                        //Set Addr
                     au.flags |= AUDIO_FLAGS_VOLUME40;   // for others
                 }
                 break;
-#if (UAC_TYPE == TYPE_UAC2) 
+//#if (UAC_TYPE == TYPE_UAC2) 
             // for UAC2
             case CS01_ID:
                 au.flags |= AUDIO_FLAGS_FREQ1;
@@ -360,11 +341,12 @@ if(status0&0x40)                        //Set Addr
             case CS02_ID:
                 au.flags |= AUDIO_FLAGS_FREQ2;
                 break;
-#endif              
+//#endif              
             default:
                 break;
         }
-#if (UAC_TYPE < TYPE_UAC2) 
+        if (au.uac_type < TYPE_UAC2)
+        { 
         // for UAC1
         switch(endpoint)
         {
@@ -380,17 +362,17 @@ if(status0&0x40)                        //Set Addr
                 break;
 
         } 
-#endif              
+        }              
         //if(au.irq_count<(AUDIO_IRQ_DATA_MAX_COUNT-1))   au.irq_count++;
     }
-	//hw_regs[0x00]=0x00;
+	hw_regs[0x00]=0x00;
 
 	//hw_regs[0x10]=status0;         // clear irq flags
 	//hw_regs[0x11]=status1;         // clear irq flags
 
-    //hw_regs[0x9E]= hw_regs[0x9E]+1;
-	//hw_regs[0x9C]= status0;         
-	//hw_regs[0x9D]= status1;         
+    hw_regs[0x9E]= hw_regs[0x9E]+1;
+	hw_regs[0x9C]= status0;         
+	hw_regs[0x9D]= status1;         
 
 	hw_regs[0x00]= old_bank;
 
@@ -407,8 +389,14 @@ void Timer0_ISR(void) interrupt INTERRUPT_TIMER0
 
     TH0 = TIMER0_125US_VALUE/256;	//MODE1 16bit 65536
     TL0 = TIMER0_125US_VALUE%256;
-    timer_count++;
-#if (SUPPORT_IAP2==1)
+#if (UART_RX_SUPPORT)
+    if((timer_count++&0x0007)==0)
+    {
+        if(UART_TimeOut_Flag)
+            UART_TimeOut_Count++;
+    }
+#endif
+#if (SUPPORT_IAP2)
     if((timer_count&0x07)==0)
     {
         if(iap2.ack_timer<65535) 
@@ -421,12 +409,24 @@ void Timer0_ISR(void) interrupt INTERRUPT_TIMER0
 void Uart0_ISR(void) interrupt INTERRUPT_UART0 
 {
 	EA=0;
-    /*
+
 	if (RI == 1)
    	{
+      	RI = 0;
+
+   	    UART_TimeOut_Flag = 1;          // Restart time out control when Uart receive command 
+        UART_TimeOut_Count = 0;
+
       	rx_data = SBUF;                    // Read a character from UART
+
+      	if (UART_Buffer_Index < UART_BUFFERSIZE)
+      	{
+         	UART_Buffer[UART_Buffer_Index] = rx_data; // Store in array
+
+         	UART_Buffer_Index++;           // Update array's size
+      	}
 	}
-    */
+
     EA=1;
 }
 void Delay100us(WORD count)
@@ -435,7 +435,7 @@ void Delay100us(WORD count)
     for(i=0;i<count;i++)
     {
         j=0;         
-        while(j++<4);
+        while(j++<6);
     }
 }
 

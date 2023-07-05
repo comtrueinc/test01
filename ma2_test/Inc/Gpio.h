@@ -1,36 +1,39 @@
-#ifndef _CTUSB_Gpio_H_
-#define _CTUSB_Gpio_H_
-#include "Hid.h"
-/*
-enum
-{
-    STATE_HID_IDLE          =0x00,
-    STATE_HID_WAIT_TRIGGER  =0x01,
-    STATE_HID_SET_STATUS    =0x02,
-    STATE_HID_WAIT_SEND     =0x03,
-    STATE_HID_SET_NORMAL    =0x04,
-    STATE_HID_WAIT_FINISH   =0x05,
-};
+#ifndef _CTUSB_GPIO_H_
+#define _CTUSB_GPIO_H_
 
-enum
-{
-    HID_USAGE_NONE          =0x00,
-    HID_USAGE_VOL_UP        =0x01,
-    HID_USAGE_VOL_DOWN      =0x02,
-    HID_UASGE_MUTE          =0x04,
-    HID_USAGE_STOP          =0x08,
-    HID_USAGE_PLAY          =0x10,
-    HID_USAGE_NEXT          =0x20,
-    HID_USAGE_PREV          =0x40,
-};
-*/
+// --------------------------------------------------------------
+// GPIO usage configuration
+// --------------------------------------------------------------
+// PORT A
+#define GPIOA_INPUT_TEST1_PIN                   0
+#define GPIOA_INPUT_TEST2_PIN                   BIT2              
+
+#define GPIOA_OUTPUT_TEST1_PIN                  BIT5
+#define GPIOA_OUTPUT_TEST2_PIN                  0
+
+#define GPIOA_INPUT_PIN_USAGE                   (GPIOA_INPUT_TEST1_PIN | GPIOA_INPUT_TEST2_PIN)
+#define GPIOA_OUTPUT_PIN_USAGE                  (GPIOA_OUTPUT_TEST1_PIN | GPIOA_OUTPUT_TEST2_PIN)
+
+// PORT B
+#define GPIOB_INPUT_HID_VOL_UP                  BIT4            // GPIOB4
+#define GPIOB_INPUT_HID_VOL_DOWN                BIT1            // GPIOB1
+#define GPIOB_INPUT_HID_START                   BIT2            // GPIOB2
+#define GPIOB_INPUT_HID_MUTE                    0               // useless
+#define GPIOB_INPUT_HID_STOP                    0               // useless
+
+#define GPIOB_OUTPUT_TEST1_PIN                  BIT3
+
+#define GPIOB_INPUT_PIN_USAGE                   (GPIOB_INPUT_HID_VOL_UP|GPIOB_INPUT_HID_VOL_DOWN|GPIOB_INPUT_HID_START)
+#define GPIOB_OUTPUT_PIN_USAGE                  (GPIOB_OUTPUT_TEST1_PIN)
+
+#define GPIO_KEYS_DEBOUND_MAX                   20
+
 typedef struct _GPIO_GOLBAL_INFO
 {
-    BYTE    flags;
-    BYTE    hid_state;
-    BYTE    hid_usage;
+    //BYTE    flags;
     BYTE    in_status;
     BYTE    in_count;
+    BYTE    hid_status;
 } GPIO_GOLBAL_INFO, *PGPIO_GOLBAL_INFO;	
 
 #ifdef	_CTUSB_GPIO_C_
@@ -41,6 +44,8 @@ extern GPIO_GOLBAL_INFO gpio;
 
 void GpioInit(void);
 void GpioMonitor(void);
+
+BYTE GpioToHidStatus(BYTE status);
 
 void InitGpioPortA(BYTE function, BYTE direction);
 void SetGpioPortAOut(BYTE abit, BYTE level);
